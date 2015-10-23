@@ -1,4 +1,6 @@
 #include <vector>
+#include <string>
+#include <iostream>
 
 #include "bitmap.h"
 
@@ -17,12 +19,14 @@ static const vec3 lightPos(20, 20, -5);
 
 static const int MAX_DEPTH = 6;
 
+// ray with an origin and direciton
 class Ray
 {
 public:
 	Ray(vec3 o, vec3 d) : origin(o), dir(glm::normalize(d)) {}
 	~Ray() {}
 
+	// get point at distance along ray
 	vec3 getPoint(const float dist) const
 	{
 		return origin + dist * dir;
@@ -31,16 +35,19 @@ public:
 	vec3 origin, dir;
 };
 
+// abstract base class for a shape with a center and some material properties
 class Object
 {
 public:
 
 	Object(vec3 position = vec3(0), vec3 color = vec3(1), float opacity = 1, float reflectivity = 0)
 		: position(position), surfaceColor(color), reflectivity(reflectivity) {}
-	~Object() {}
+	virtual ~Object() {}
 
+	// check if ray intersects with object and set dist to point of intersection on ray
 	virtual bool intersect(const Ray &ray, float &dist) const = 0;
 
+	// return normal at the point of incident
 	virtual vec3 getNormal(const vec3 &incident) const = 0;
 
 	vec3 position;
@@ -48,6 +55,7 @@ public:
 	vec3 surfaceColor;
 };
 
+// sphere specied by a radius
 class Sphere : public Object
 {
 public:
@@ -58,29 +66,19 @@ public:
 
 	bool intersect(const Ray &ray, float &dist) const override
 	{
-#if 0
-		vec3 l = position - ray.origin;
-		float v = glm::dot(l, ray.dir);
-		float disc = radiusSquared - glm::dot(l, l) + (v * v);
-
-		if (disc < 0)
-			return false;
-		else
-		{
-			// set p to the point of intersection
-			dist = v - glm::sqrt(disc);
-			return true;
-		}
-#endif
+#if 1
 		vec3 l = position - ray.origin;
 		float disc = glm::dot(l, ray.dir);
-		if (disc < 0) return false;
+		if (disc < 0)
+			return false;
 		float dSquared = glm::dot(l, l) - disc * disc;
-		if (dSquared > radiusSquared) return false;
+		if (dSquared > radiusSquared) 
+			return false;
 		float thc = sqrt(radiusSquared - dSquared);
 		dist = disc - thc;
 
 		return true;
+#endif
 #if 0
 		vec3 rc = ray.origin - position;
 		float c = glm::dot(rc, rc) - radiusSquared;
@@ -105,6 +103,7 @@ public:
 	float radius, radiusSquared;
 };
 
+// flat disk specified by radius and plane normal
 class Disk : public Object
 {
 public:
@@ -206,7 +205,7 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 	return pointColor;
 }
 
-void render(const std::vector<Object*> &objects)
+void render(const std::vector<Object*> &objects, const char *filename)
 {
 	unsigned width = 1280, height = 720;
 	vec3 *image = new vec3[width * height], *pixel = image;
@@ -226,14 +225,19 @@ void render(const std::vector<Object*> &objects)
 	}
 	
 	// save result to a bitmap image
-	writeBitmap("./image.bmp", (char *)image, width, height);
+	writeBitmap(filename, (char *)image, width, height);
 	delete [] image;
 }
 
 int main(int argc, char **argv)
 {
-	std::vector<Object*> objects;
+	std::string filename;
+	if (argc == 2)
+		filename = argv[1];
+	else
+		filename = "image.bmp";
 
+	std::vector<Object*> objects;
 
 	//spheres.push_back(Sphere(vec3(5, 5, -15), 3, vec3(0.9, 0.9, 0.2)));
 	
@@ -247,7 +251,7 @@ int main(int argc, char **argv)
 
 	objects.push_back(new Disk(vec3(0, -5, -30), 40.0, vec3(0, -1, 0), vec3(0.2, 0.2, 0.2), 1, 0.5));
 
-	render(objects);
+	render(objects, filename.c_str());
 
 	for (auto obj : objects)
 	{
