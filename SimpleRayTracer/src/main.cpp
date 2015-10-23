@@ -41,7 +41,7 @@ class Object
 public:
 
 	Object(vec3 position = vec3(0), vec3 color = vec3(1), float opacity = 1, float reflectivity = 0)
-		: position(position), surfaceColor(color), reflectivity(reflectivity) {}
+		: position(position), surfaceColor(color), opacity(opacity), reflectivity(reflectivity) {}
 	virtual ~Object() {}
 
 	// check if ray intersects with object and set dist to point of intersection on ray
@@ -169,16 +169,22 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 
 	vec3 normal = objHit->getNormal(intersectionPoint);
 
+	float facingratio = glm::dot(-ray.dir, normal);
+	float fresneleffect = glm::mix(glm::pow(1.0f - facingratio, 3.0f), 1.0f, 0.1f);
+
+	vec3 reflection(0);
+	vec3 refraction(0);
+
 	if (objHit->reflectivity > 0 && depth < MAX_DEPTH)
 	{
-		float facingratio = glm::dot(-ray.dir, normal);
-		// change the mix value to tweak the effect
-		float fresneleffect = glm::mix(glm::pow(1.0f - facingratio, 3.0f), 1.0f, 0.1f);
 		vec3 reflectDir(glm::reflect(ray.dir, normal));
 		Ray r1(intersectionPoint + normal, reflectDir);
 
-		pointColor += fresneleffect * objHit->reflectivity * objHit->surfaceColor * traceRay(objects, r1, depth + 1);
+		//pointColor += fresneleffect * objHit->reflectivity * objHit->surfaceColor * traceRay(objects, r1, depth + 1);
+		reflection = traceRay(objects, r1, depth + 1);
 	}
+
+	pointColor += fresneleffect * reflection + refraction * (1 - fresneleffect) * (1 - objHit->opacity) * objHit->surfaceColor;
 
 	pointColor += ambientColor * objHit->surfaceColor;
 
@@ -202,6 +208,7 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 	vec3 reflectDir = glm::reflect(-lightDir, normal);
 	pointColor += objHit->surfaceColor * glm::pow(glm::max(glm::dot(normal, reflectDir), 0.0f), 50.0f);
 
+
 	return pointColor;
 }
 
@@ -209,17 +216,29 @@ void render(const std::vector<Object*> &objects, const char *filename)
 {
 	unsigned width = 1280, height = 720;
 	vec3 *image = new vec3[width * height], *pixel = image;
-	float invWidth = 1 / float(width), invHeight = 1 / float(height);
-	float fov = 65, aspectratio = width / float(height);
-	float angle = tan(glm::pi<float>() * 0.5 * fov / 180.0f);
+	const vec3 cameraPosition = vec3(0.0, 0.0, 20.0);
+	const vec3 cameraDirection = glm::normalize(vec3(0.0, 0.0, -1.0));
+	const vec3 cameraUp = glm::normalize(vec3(0.0, 1.0, 0.0));
 
-	// Trace rays
-	for (unsigned y = 0; y < height; ++y) {
-		for (unsigned x = 0; x < width; ++x, ++pixel) {
-			float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectratio;
-			float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
-			vec3 raydir(xx, yy, -1);
-			Ray ray(vec3(0), raydir);
+	float fov = 50.0;
+	float fovx = glm::pi<float>() * fov / 360.0;
+	float fovy = fovx * float(height) / float(width);
+
+	float ulen = tan(fovx);
+	float vlen = tan(fovy);
+
+	for (unsigned y = height; y > 0; --y)
+	{
+		for (unsigned x = 0; x < width; ++x, ++pixel)
+		{
+			float u = (2.0 * ((x + 0.5) / width) - 1.0);
+			float v = (2.0 * ((y + 0.5) / height) - 1.0);
+
+			vec3 nright = glm::normalize(glm::cross(cameraUp, cameraDirection));
+			vec3 currPixel = cameraPosition + cameraDirection + nright * u * ulen + cameraUp * v *vlen;
+
+			vec3 rayDirection = glm::normalize(currPixel - cameraPosition);
+			Ray ray(cameraPosition, rayDirection);
 			*pixel = traceRay(objects, ray, 0);
 		}
 	}
@@ -241,15 +260,17 @@ int main(int argc, char **argv)
 
 	//spheres.push_back(Sphere(vec3(5, 5, -15), 3, vec3(0.9, 0.9, 0.2)));
 	
-	objects.push_back(new Sphere(vec3(0.0, 0, -20), 4, vec3(1.00, 0.32, 0.36), 1, 0.7));
-	objects.push_back(new Sphere(vec3(5.0, -1, -15), 2, vec3(0.90, 0.76, 0.46), 1, 1));
-	objects.push_back(new Sphere(vec3(5.0, 0, -25), 3, vec3(0.35, 0.97, 0.37), 1, 0.5));
-	objects.push_back(new Sphere(vec3(-5.5, 0, -15), 3, vec3(0.9, 0.9, 0.9), 1, 1));
+	objects.push_back(new Sphere(vec3(0.0, 0, -20), 4, vec3(1.00, 0.32, 0.36), 0.2, 0.7));
+	objects.push_back(new Sphere(vec3(5.0, -1, -15), 2, vec3(0.90, 0.76, 0.46), 1.0, 1));
+	objects.push_back(new Sphere(vec3(5.0, 0, -25), 3, vec3(0.35, 0.97, 0.37), 1.0, 0.5));
+	objects.push_back(new Sphere(vec3(-5.5, 0, -10), 3, vec3(0.9, 0.9, 0.9), 1.0, 1));
 	//objects.push_back(new Sphere(vec3(0.0, -10008, -20), 10000, vec3(0.20, 0.20, 0.20), 0, 0.0));
 	
-	objects.push_back(new Sphere(vec3(0, 5, -15), 1.0, vec3(0.2, 0.32, 0.9), 1, 1));
+	objects.push_back(new Sphere(vec3(0, 5, -15), 1.0, vec3(0.2, 0.32, 0.9), 1.0, 1));
 
-	objects.push_back(new Disk(vec3(0, -5, -30), 40.0, vec3(0, -1, 0), vec3(0.2, 0.2, 0.2), 1, 0.5));
+	objects.push_back(new Disk(vec3(0, -5, -30), 40.0, vec3(0, -1, 0), vec3(0.2, 0.2, 0.2), 1.0, 0.0));
+
+	//objects.push_back(new Sphere(vec3(0.0, 0, 0), 0.01, vec3(1.00, 0.32, 0.36), 0.2, 0.7));
 
 	render(objects, filename.c_str());
 
