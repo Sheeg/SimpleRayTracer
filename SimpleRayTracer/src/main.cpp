@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <chrono>
 
 #include "bitmap.h"
 
@@ -272,7 +273,17 @@ int main(int argc, char **argv)
 
 	//objects.push_back(new Sphere(vec3(0.0, 0, 0), 0.01, vec3(1.00, 0.32, 0.36), 0.2, 0.7));
 
+	typedef std::chrono::high_resolution_clock clock;
+	typedef std::chrono::milliseconds ms;
+	typedef std::chrono::duration<double> duration;
+
+	auto start = clock::now();
+
 	render(objects, filename.c_str());
+
+	auto finish = clock::now();
+	duration timeTaken = finish - start;
+	std::cout << "Render complete, took " << std::chrono::duration_cast<ms>(timeTaken).count() << "ms\n";
 
 	for (auto obj : objects)
 	{
