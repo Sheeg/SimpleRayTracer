@@ -174,7 +174,7 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 	{
 		float facingratio = glm::dot(-ray.dir, normal);
 		// change the mix value to tweak the effect
-		float fresneleffect = glm::mix(pow(1 - facingratio, 3), 1.0f, 0.1f);
+		float fresneleffect = glm::mix(glm::pow(1.0f - facingratio, 3.0f), 1.0f, 0.1f);
 		vec3 reflectDir(glm::reflect(ray.dir, normal));
 		Ray r1(intersectionPoint + normal, reflectDir);
 
