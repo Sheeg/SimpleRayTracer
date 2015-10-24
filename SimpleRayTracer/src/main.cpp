@@ -68,6 +68,7 @@ public:
 	bool intersect(const Ray &ray, float &dist) const override
 	{
 #if 1
+		// intersection algorithm from tutorial
 		vec3 l = position - ray.origin;
 		float disc = glm::dot(l, ray.dir);
 		if (disc < 0)
@@ -81,6 +82,7 @@ public:
 		return true;
 #endif
 #if 0
+		// first intersection algorithm. Might be wrong?
 		vec3 rc = ray.origin - position;
 		float c = glm::dot(rc, rc) - radiusSquared;
 		float b = dot(ray.dir, rc);
@@ -221,16 +223,16 @@ void render(const std::vector<Object*> &objects, const char *filename)
 	const vec3 cameraDirection = glm::normalize(vec3(0.0, 0.0, -1.0));
 	const vec3 cameraUp = glm::normalize(vec3(0.0, 1.0, 0.0));
 
-	float fov = 50.0;
+	float fov = 65.0;
 	float fovx = glm::pi<float>() * fov / 360.0;
 	float fovy = fovx * float(height) / float(width);
 
-	float ulen = tan(fovx);
-	float vlen = tan(fovy);
+	float ulen = glm::tan(fovx);
+	float vlen = glm::tan(fovy);
 
 	for (unsigned y = height; y > 0; --y)
 	{
-		for (unsigned x = 0; x < width; ++x, ++pixel)
+		for (unsigned x = width; x > 0; --x, ++pixel)
 		{
 			float u = (2.0 * ((x + 0.5) / width) - 1.0);
 			float v = (2.0 * ((y + 0.5) / height) - 1.0);
@@ -261,15 +263,15 @@ int main(int argc, char **argv)
 
 	//spheres.push_back(Sphere(vec3(5, 5, -15), 3, vec3(0.9, 0.9, 0.2)));
 	
-	objects.push_back(new Sphere(vec3(0.0, 0, -20), 4, vec3(1.00, 0.32, 0.36), 0.2, 0.7));
+	objects.push_back(new Sphere(vec3(0.0, 0, -20), 4, vec3(1.00, 0.32, 0.36), 1.0, 1.0));
 	objects.push_back(new Sphere(vec3(5.0, -1, -15), 2, vec3(0.90, 0.76, 0.46), 1.0, 1));
-	objects.push_back(new Sphere(vec3(5.0, 0, -25), 3, vec3(0.35, 0.97, 0.37), 1.0, 0.5));
-	objects.push_back(new Sphere(vec3(-5.5, 0, -10), 3, vec3(0.9, 0.9, 0.9), 1.0, 1));
+	objects.push_back(new Sphere(vec3(5.0, 0, -25), 3, vec3(0.35, 0.97, 0.37), 1.0, 1));
+	objects.push_back(new Sphere(vec3(-6, 0, -5), 3, vec3(0.9, 0.9, 0.9), 1.0, 1));
 	//objects.push_back(new Sphere(vec3(0.0, -10008, -20), 10000, vec3(0.20, 0.20, 0.20), 0, 0.0));
 	
 	objects.push_back(new Sphere(vec3(0, 5, -15), 1.0, vec3(0.2, 0.32, 0.9), 1.0, 1));
 
-	objects.push_back(new Disk(vec3(0, -5, -30), 40.0, vec3(0, -1, 0), vec3(0.2, 0.2, 0.2), 1.0, 0.0));
+	objects.push_back(new Disk(vec3(0, -5, 0), 40.0, vec3(0, -1, 0), vec3(0.0, 0.0, 0.0), 1.0, 1.0));
 
 	//objects.push_back(new Sphere(vec3(0.0, 0, 0), 0.01, vec3(1.00, 0.32, 0.36), 0.2, 0.7));
 

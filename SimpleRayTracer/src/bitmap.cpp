@@ -1,6 +1,5 @@
 #include "bitmap.h"
 
-#include <cstring> // std::memset
 #include <fstream> // std::ofstream
 #include <algorithm> // std::min
 
