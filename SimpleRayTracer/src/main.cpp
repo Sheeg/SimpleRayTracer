@@ -79,8 +79,9 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 
 		vec3 lightDir = glm::normalize(light - intersectionPoint);
 		bool shadow = false;
-		Ray shadowRay(intersectionPoint + normal * bias, lightDir);
 		float lightDist;
+		Ray shadowRay(intersectionPoint + normal * bias, lightDir);
+
 		for (auto obj : objects)
 		{
 			if (obj->intersect(shadowRay, lightDist))
@@ -89,6 +90,7 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 				break;
 			}
 		}
+		
 		if (!shadow)
 		{
 			float cutoff = 0.0001;
@@ -107,7 +109,6 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 			attenuation = glm::max(attenuation, 0.0f);
 
 			float diff = glm::max(0.0f, glm::dot(L, normal));
-			//pointColor += objHit->surfaceColor * diff * attenuation;
 
 			vec3 reflectDir = glm::reflect(-L, normal);
 			float specular = glm::pow(glm::max(glm::dot(normal, reflectDir), 0.0f), 80.0f);

@@ -125,7 +125,7 @@ public:
 #endif
 #if 1
 	float denom = glm::dot(normal, ray.dir);
-	if (abs(denom) > std::numeric_limits<float>::min())
+	if (glm::abs(denom) > std::numeric_limits<float>::min())
 	{
 		dist = glm::dot(normal, position - ray.origin) / denom;
 		if (dist >= 0)
