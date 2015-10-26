@@ -15,13 +15,15 @@
 
 using glm::vec3;
 
+typedef std::vector<Object*> ObjArray;
+
 static const vec3 bgColor(0.1, 0.17, 0.3), ambientColor(0.2, 0.2, 0.2);
 
 static std::vector<vec3> lights;
 
 static const int MAX_DEPTH = 6;
 
-vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int depth)
+vec3 traceRay(const ObjArray &objects, const Ray &ray, const int depth)
 {
 	vec3 pointColor = vec3(0), intersectionPoint;
 	float minDist = std::numeric_limits<float>::infinity();
@@ -56,10 +58,8 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 	float facingratio = glm::dot(ray.dir, -normal);
 	float fresneleffect = glm::mix(glm::pow(1.0f - facingratio, 3.0f), 1.0f, 0.1f);
 
-	vec3 reflection(0);
-	vec3 refraction(0);
+	vec3 reflection(0), refraction(0);
 
-	
 #if 1
 	if (objHit->reflectivity > 0 && depth < MAX_DEPTH)
 	{
@@ -68,16 +68,14 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 		Ray reflectRay(intersectionPoint + normal * bias, reflectDir);
 
 		reflection = traceRay(objects, reflectRay, depth + 1);
-		//pointColor += fresneleffect * objHit->reflectivity * objHit->surfaceColor * reflection;
-		//pointColor += fresneleffect * reflection + refraction * (1 - fresneleffect) * (1 - objHit->opacity) * objHit->surfaceColor;
 		pointColor += fresneleffect * reflection;
 	}
 #endif
-
+#if 1
 	for (auto &light : lights)
 	{
-
-		vec3 lightDir = glm::normalize(light - intersectionPoint);
+		vec3 lightVec = light - intersectionPoint;
+		vec3 lightDir = glm::normalize(lightVec);
 		bool shadow = false;
 		float lightDist;
 		Ray shadowRay(intersectionPoint + normal * bias, lightDir);
@@ -94,35 +92,33 @@ vec3 traceRay(const std::vector<Object*> &objects, const Ray &ray, const int dep
 		if (!shadow)
 		{
 			float cutoff = 0.0001;
-			float r = 20;
-			vec3 L = light - intersectionPoint;
-			float distance = glm::length(L);
+			float r = 20; // temporary radius value
+			float distance = glm::length(lightVec);
 			float d = glm::max(distance - r, 0.0f);
-			L /= distance;
 
 			// calculate attenuation
 			float denom = d / r + 1;
 			float attenuation = 1 / (denom*denom);
 
 			// attenuation should equal 0 when we are beyond max range
-			attenuation = (attenuation - cutoff) / (1 - cutoff);
+			attenuation = (attenuation - cutoff) / (1.0f - cutoff);
 			attenuation = glm::max(attenuation, 0.0f);
 
-			float diff = glm::max(0.0f, glm::dot(L, normal));
+			float diff = glm::max(0.0f, glm::dot(lightDir, normal));
 
-			vec3 reflectDir = glm::reflect(-L, normal);
+			vec3 reflectDir = glm::reflect(-lightDir, normal);
 			float specular = glm::pow(glm::max(glm::dot(normal, reflectDir), 0.0f), 80.0f);
 
 			pointColor += (objHit->surfaceColor * diff + specular) * attenuation;
 		}
 	}
-
+#endif
 	return pointColor;
 }
 
-void render(const std::vector<Object*> &objects, const char *filename)
+void render(const ObjArray &objects, const char *filename)
 {
-	unsigned width = 1280, height = 720;
+	unsigned width = 1920, height = 1080;
 	vec3 *image = new vec3[width * height], *pixel = image;
 	const vec3 cameraPosition = vec3(0.0, 40.0, 80.0);
 	const vec3 cameraDirection = glm::normalize(vec3(0.0, -0.5, -1.0));
@@ -132,12 +128,18 @@ void render(const std::vector<Object*> &objects, const char *filename)
 	const vec3 cameraDirection = glm::normalize(vec3(0.0, -1.0, 0.0));
 	const vec3 cameraUp = glm::normalize(vec3(0.0, 0.0, 1.0));*/
 
-	float fov = 50.0;
+	float fov = 60.0;
 	float fovx = glm::pi<float>() * fov / 360.0;
 	float fovy = fovx * float(height) / float(width);
 
 	float ulen = glm::tan(fovx);
 	float vlen = glm::tan(fovy);
+
+	typedef std::chrono::high_resolution_clock clock;
+	typedef std::chrono::milliseconds ms;
+	typedef std::chrono::duration<double> duration;
+
+	auto start = clock::now();
 
 	for (unsigned y = height; y > 0; --y)
 	{
@@ -154,6 +156,10 @@ void render(const std::vector<Object*> &objects, const char *filename)
 			*pixel = traceRay(objects, ray, 0);
 		}
 	}
+
+	auto finish = clock::now();
+	duration timeTaken = finish - start;
+	std::cout << "Render complete, took " << std::chrono::duration_cast<ms>(timeTaken).count() << "ms\n";
 	
 	// save result to a bitmap image
 	writeBitmap(filename, (char *)image, width, height);
@@ -168,7 +174,7 @@ int main(int argc, char **argv)
 	else
 		filename = "image.bmp";
 
-	std::vector<Object*> objects;
+	ObjArray objects;
 	
 	////objects.push_back(new Sphere(vec3(0.0, 0, -20), 4, vec3(1.00, 0.32, 0.36), 1.0, 1.0));
 	//objects.push_back(new Sphere(vec3(0.0, 0, -20), 4, vec3(0, 0, 0), 1.0, 0.8));
@@ -188,17 +194,7 @@ int main(int argc, char **argv)
 	lights.push_back(vec3(10, 10, 10));
 	lights.push_back(vec3(-10, 10, 10));
 
-	typedef std::chrono::high_resolution_clock clock;
-	typedef std::chrono::milliseconds ms;
-	typedef std::chrono::duration<double> duration;
-
-	auto start = clock::now();
-
 	render(objects, filename.c_str());
-
-	auto finish = clock::now();
-	duration timeTaken = finish - start;
-	std::cout << "Render complete, took " << std::chrono::duration_cast<ms>(timeTaken).count() << "ms\n";
 
 	for (auto obj : objects)
 	{

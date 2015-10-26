@@ -56,7 +56,7 @@ public:
 
 	bool intersect(const Ray &ray, float &dist) const override
 	{
-#if 1
+#if 0
 		// intersection algorithm from tutorial
 		vec3 l = position - ray.origin;
 		float disc = glm::dot(l, ray.dir);
@@ -70,7 +70,7 @@ public:
 
 		return true;
 #endif
-#if 0
+#if 1
 		// first intersection algorithm. Might be wrong?
 		vec3 rc = ray.origin - position;
 		float c = glm::dot(rc, rc) - radiusSquared;
@@ -106,23 +106,6 @@ public:
 
 	bool intersect(const Ray &ray, float &dist) const override
 	{
-#if 0
-		// tutorial intersection code
-		float denom = glm::dot(normal, ray.dir);
-		if (abs(denom) > 1e-6) {
-			vec3 p0l0 = position - ray.origin;
-			dist = glm::dot(p0l0, normal) / denom;
-			if (dist >= 0)
-			{
-				vec3 p = ray.getPoint(dist);
-				vec3 v = p - position;
-				float d2 = dot(v, v);
-				return d2 <= radiusSquared;
-			}
-		}
-
-		return false;
-#endif
 #if 1
 	float denom = glm::dot(normal, ray.dir);
 	if (glm::abs(denom) > std::numeric_limits<float>::min())
